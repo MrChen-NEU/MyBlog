@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="./stylesheets/live2d.css">
+
+    <title>Document</title>
+</head>
+<body>
+    <div id="landlord" class="lock">
+        <div id="l2d-message"></div>
+        <div id="l2d-control">
+            <button id="l2d-drag">
+                <img src="./images/drag.svg" alt="" draggable="false"/>
+            </button>
+        </div>
+        <canvas id="live2d" width="280" height="250" class="live2d"></canvas>
+    </div>
+
+    <script type="text/javascript" src="./javascripts/jquery.min.js"></script>
+    <script type="text/javascript" src="./javascripts/live2d.js"></script>
+    <script type="text/javascript" src="./javascripts/message.js"></script>
+    <script type="text/javascript" src="./javascripts/extension.js"></script>
+    <script type="text/javascript">
+        loadlive2d("live2d", "./models/illyasviel/illyasviel.model.json");
+    </script>
+
+    
+    
+</body>
+</html>

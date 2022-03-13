@@ -1,0 +1,286 @@
+用户模块
+    通过用户行为来区分       actionName
+        用户登录           actionName="login"
+        进入个人中心        actionName="userCenter"
+        加载头像            actionName="userHead"
+        验证昵称的唯一性     actionName="checkNick"
+        修改用户信息        actionName="updateUser"
+        用户退出            actionName="logout"
+
+    在UserServlet的service方法中
+        1.获取用户行为
+            String actionName = request.getParameter("actionName");
+        2. 判断用户行为，调用对应的方法
+            if ("login".equals(actionName)) {
+                // 用户登录
+            } else if ("userCenter".equals(actionName)) {
+                // 进入个人中心
+            }
+
+
+一、用户登录
+    ==================前端实现==================
+        1. 添加表单，设置表单属性
+            action="user" method="post" id="loginForm"
+        2. 设置表单元素的name属性值，修改id属性值（首字母改小写）
+            设置文本框和密码框的那么属性值
+            设置复选框的那么属性值和value属性值（如果复选框未选中，则获取不到value属性值）
+            设置隐藏域，传递用户行为 （name="actionName" value="login"）
+        3. 在 config.js 文件中，添加按钮的点击事件绑定的函数 checkLogin()
+            表单校验
+                1. 获取表单元素的值（姓名、密码）
+                2. 判断元素的值是否为空（引入util.js文件）
+                    如果为空，设置提示信息 （通过设置span标签），并return
+                3. 如果不为空，则提交表单
+
+    ==================后端实现==================
+整体思路：
+    1. 获取参数 （姓名、密码）
+    2. 参数的非空校验  （ResultInfo的封装类，用来封装响应结果  状态码、提示信息、返回的对象）
+        如果为空
+            设置ResultInfo对象的状态码和提示信息
+            将ResultInfo对象设置request作用域中
+            请求转发跳转到登录页面
+            return
+    3. 如果不为空，通过用户名查询用户对象
+    4. 判断用户对象是否为空
+        如果为空
+            设置ResultInfo对象的状态码和提示信息
+            将ResultInfo对象设置request作用域中
+            请求转发跳转到登录页面
+            return
+    5. 如果用户对象不为空，将数据库中查询到的用户对象的密码与前台传递的密码作比较 （将密码加密后再比较）
+        如果密码不正确
+            设置ResultInfo对象的状态码和提示信息
+            将ResultInfo对象设置request作用域中
+            请求转发跳转到登录页面
+            return
+    6. 如果密码正确
+        将用户信息存到session作用域中
+        判断用户是否选择记住密码（rem的值是1）
+            如果是，将用户姓名与密码存到cookie中，设置失效时间，并响应给客户端
+            如果否，清空原有的cookie对象
+        重定向跳转到index页面
+
+分层思想：
+    Web层：（控制层：接收参数、响应数据）
+        1. 获取参数 （姓名、密码）
+        2. 调用Service层的方法，返回ResultInfo对象
+        3. 判断是否登录成功
+            如果失败
+                将resultInfo对象设置到request作用域中
+                请求转发跳转到登录页面
+            如果成功
+                将用户信息设置到session作用域中
+                判断用户是否选择记住密码（rem的值是1）
+                    如果是，将用户姓名与密码存到cookie中，设置失效时间，并响应给客户端
+                    如果否，清空原有的cookie对象
+                重定向跳转到index页面
+
+    Service层：（业务逻辑层：参数判断、业务逻辑处理）
+        1. 判断参数是否为空
+            如果为空
+                设置ResultInfo对象的状态码和提示信息
+                返回resultInfo对象
+        2. 如果不为空，通过用户名查询用户对象
+        3. 判断用户对象是否为空
+                如果为空
+                    设置ResultInfo对象的状态码和提示信息
+                    返回resultInfo对象
+        4. 如果用户对象不为空，将数据库中查询到的用户对象的密码与前台传递的密码作比较 （将密码加密后再比较）
+               如果密码不正确
+                    设置ResultInfo对象的状态码和提示信息
+                    返回resultInfo对象
+        5. 如果密码正确
+            设置ResultInfo对象的状态码和提示信息
+        6. 返回resultInfo对象
+
+
+    Dao层：（数据访问层：数据库中的增删改查操作）
+        通过用户名查询用户对象， 返回用户对象
+            1. 获取数据库连接
+            2. 定义sql语句
+            3. 预编译
+            4. 设置参数
+            5. 执行查询，返回结果集
+            6. 判断并分析结果集
+            7. 关闭资源
+
+
+二、非法访问拦截和免登录
+
+	非法访问拦截
+		拦截的资源：
+			所有资源   /*
+
+		需要被放行的资源：
+			1、指定页面，放行 （用户无需登录即可访问的页面；例如：登录页面login.jsp、注册页面register.jsp等）
+			2、静态资源，放行 （存放在statics目录下的资源；例如：js、css、images等）
+			3、指定行为，放行 （用户无需登录即可执行的操作；例如：登录操作user?actionName=login、注册操作等）
+			4、登录状态，放行 （判断session作用域中是否存在用户信息；存在就放行，不存在，就拦截跳转到登录页面）
+
+	免登录（自动登录）
+		通过Cookie和Session对象实现
+		什么时候使用免登录：
+		    当用户处于未登录状态，且去请求需要登录才能访问的资源时，调用自动登录功能
+		目的：
+			让用户处于登录状态（自动调用登录方法）
+		实现：
+			从Cookie对象中获取用户的姓名与密码，自动执行登录操作
+				1、获取cookie数组
+				2、判断cookie数组
+				3、遍历cookie数组，获取指定的cookie对象   （name为user的cookie对象）
+				4、得到指定cookie对象的value    （姓名与密码：userName-userPwd）
+				5、通过split()方法将value字符串转换成数组
+				6、从数组中别得到姓名和密码
+				7、请求转发跳转到登录操作    user?actionName=login&userName=姓名&userPwd=密码
+				return;
+
+
+三、用户退出
+    前端：
+        设置超链接的请求地址  user?actionName=logout
+    后台：
+        1. 销毁Session对象
+        2. 删除Cookie对象
+        3. 重定向跳转到登录页面
+
+
+四、进入个人中心
+    前台：
+        设置超链接的访问地址 user?actionName=userCenter
+        通过el表达式获取session作用域中的用户信息
+    后台：
+        1. 设置首页动态包含的页面值
+        2. 请求转发跳转到index.jsp
+
+
+五、加载头像
+    前台：
+        设置img标签的src属性，请求后台加载头像
+            src="user?actionName=userHead&imageName=图片名称" （通过el表达式熊session中获取）
+
+    后台：
+        1. 获取参数 （图片名称）
+        2. 得到图片的存放路径 （request.getServletContext().getealPathR("/")）
+        3. 通过图片的完整路径，得到file对象
+        4. 通过截取，得到图片的后缀
+        5. 通过不同的图片后缀，设置不同的响应的类型
+        6. 利用FileUtils的copyFile()方法，将图片拷贝给浏览器
+
+
+六、验证昵称的唯一性
+    前台：
+        昵称文本框的失焦事件  blur
+            1. 获取昵称文本框的值
+            2. 判断值是否为空
+                如果为空，提示用户，禁用按钮，并return
+            3. 判断昵称是否做了修改
+                从session作用域中获取用户昵称 （如果在js中想要使用el表达式获取域对象，js需要写在JSP页面中，无法在js文件中获取）
+                如果用户昵称与session中的昵称一致，则return
+            4. 如果昵称做了修改
+                发送ajax请求后台，验证昵称是否可用
+                    如果不可用，提示用户，并禁用按钮
+                    如果可用，清空提示信息，按钮可用
+
+        昵称文本框的聚焦事件  focus
+            1. 清空提示信息
+            2. 按钮可用
+
+    后台：
+        Web层：
+            1. 获取参数（昵称）
+            2. 从session作用域获取用户对象，得到用户ID
+            3. 调用Service层的方法，得到返回的结果
+            4. 通过字符输出流将结果响应给前台的ajax的回调函数
+            5. 关闭资源
+
+        Service层：
+            1. 判断昵称是否为空
+                如果为空，返回"0"
+            2. 调用Dao层，通过用户ID和昵称查询用户对象
+            3. 判断用户对象存在
+                存在，返回"0"
+                不存在，返回"1"
+
+        Dao层：
+            1. 定义SQL语句
+                通过用户ID查询除了当前登录用户之外是否有其他用户使用了该昵称
+                    指定昵称  nick （前台传递的参数）
+                    当前用户  userId （session作用域中的user对象）
+                    String sql = "select * from tb_user where nick = ? and userId != ?";
+            2. 设置参数集合
+            3. 调用BaseDao的查询方法
+
+
+七、修改用户信息
+    前台：
+        文件上传表单
+            1. 表单
+                表单类型  enctype="multipart/form-data"
+                提交方式  method="post"
+            2. 表单元素
+                设置name属性值（昵称、心情、头像）
+                设置隐藏域存放用户行为actionName
+
+    后台：
+        Web层：
+            注：文件上传必须在Servlet类上提那家注解！！！ @MultipartConfig
+            1. 调用Service层的方法，传递request对象作为参数，返回resultInfo对象
+            2. 将resultInfo对象存到request作用域中
+            3. 请求转发跳转到个人中心页面 （user?actionName=userCenter）
+
+        Service层：
+            1. 获取参数（昵称、心情）
+            2. 参数的非空校验（判断必填参数非空）
+                如果昵称为空，将状态码和错误信息设置resultInfo对象中，返回resultInfo对象
+            3. 从session作用域中获取用户对象（获取用户对象中默认的头像）
+            4. 实现上上传文件
+                1. 获取Part对象 request.getPart("name"); name代表的是file文件域的name属性值
+                2. 通过Part对象获取上传文件的文件名
+                3. 判断文件名是否为空
+                4. 获取文件存放的路径  WEB-INF/upload/目录中
+                5. 上传文件到指定目录
+            5. 更新用户头像 （将原本用户对象中的默认头像设置为上传的文件名）
+            6. 调用Dao层的更新方法，返回受影响的行数
+            7. 判断受影响的行数
+                如果大于0，则修改成功；否则修改失败
+            8. 返回resultInfo对象
+
+        Dao层：
+            通过用户ID修改用户信息
+            1. 定义SQL语句
+                String sql = "update tb_user set nick = ?, mood = ?, head = ? where userId = ? ";
+            2. 设置参数集合
+            3. 调用BaseDao的更新方法，返回受影响的行数
+            4. 返回受影响的行数
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

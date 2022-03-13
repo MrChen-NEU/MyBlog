@@ -1,0 +1,227 @@
+用户行为 actionName
+进入发布云记页面         actionName=view
+添加或修改云记          actionName=addOrUpdate
+查询云记详情            actionName=detail
+删除云记               actionName=delete
+分页查询云记列表        actionName=list
+
+
+
+一、进入发布云记页面
+    前台：
+        设置头部导航栏的"发布云记"超链接的href属性
+            href="note?actionName=view"
+
+    后台：
+        1. 从Session对象中获取用户对象
+        2. 通过用户ID查询对应的类型列表
+        3. 将类型列表设置到request请求域中
+        4. 设置首页动态包含的页面值
+        5. 请求转发跳转到index.jsp
+
+二、加载富文本编辑器
+    1. 下载富文本编辑器的压缩包（UTF-8），解压压缩包
+    2. 将解压后的目录中对应的utf8-jsp文件夹，拷贝到项目中的statics目录下
+    3. 修改utf8-jsp文件夹的名称，设置为ueditor
+    4. 将ueditor目录下jsp目录下的lib目录中对应的jar包，在pom.xml中加载进来；（在WEB-INF目录下，新建lib目录，将json与ueditor的jar包拷贝进去 ）
+    5. 修改配置文件
+        a. ueditor目录下的 ueditor.config.js 文件
+            设置编辑器资源文件的根路径 （相当于网站根路径的相对路径）
+            将20行的注释拷贝到22行
+                window.UEDITOR_HOME_URL = "/xxxx/xxxx/";
+            改成：
+                window.UEDITOR_HOME_URL = "/note/statics/ueditor/";  //   /站点名/资源所在路径
+        b. ueditor目录下jsp目录中的 config.json 文件
+            修改第11行的图片访问前缀
+                    "imageUrlPrefix": "", /* 图片访问路径前缀 */
+                改成：
+                     "imageUrlPrefix": "/note", /* 图片访问路径前缀 */
+            修改第12行的图片保存路径
+                    "imagePathFormat": "/ueditor/jsp/upload/image/{yyyy}{mm}{dd}/{time}{rand:6}", /* 上传保存路径,可以自定义保存路径和文件名格式 */
+                改成：
+                    "imagePathFormat": "/statics/ueditor/jsp/upload/image/{yyyy}{mm}{dd}/{time}{rand:6}", /* 上传保存路径,可以自定义保存路径和文件名格式 */
+
+    6. 使用富文本编辑器
+        1. 引入相关的JS文件 （先引入配置文件，再引入源码文件）
+            <!-- 配置文件 -->
+            <script type="text/javascript" src="statics/ueditor/ueditor.config.js"></script>
+            <!-- 编辑器源码文件 -->
+            <script type="text/javascript" src="statics/ueditor/ueditor.all.js"></script>
+        2. 准备容器 （准备一个元素，设置id属性值）
+            <!-- 加载富文本编辑器的容器 -->
+            <textarea id="content" name="content"></textarea>
+        3. 加载富文本编辑器
+            <script type="text/javascript">
+                $(function (){
+                    // 加载富文本编辑器 UE.getEditor('容器Id');
+                    var ue = UE.getEditor('content');
+                });
+            </script>
+        4. 自定义工具栏
+           ueditor.config.js 文件的toolbar属性中
+
+
+三、发布云记
+    前台：
+        表单提交
+            设置表单的提交方式和提交地址
+            在隐藏域中设置用户行为actionName
+            设置表单元素的id与name属性值
+        表单校验
+            1. 获取表单元素的值
+                获取下拉框选中的选项  .val()
+                获取文本框的值       .val()
+                获取富文本编辑器的内容
+                    ue.getContent() 获取富文本编辑器的内容（包含html标签）
+                    ue.getContentTxt() 获取富文本编辑器的纯文本内容（不包含html标签）
+            2. 参数的非空判断
+                如果为空，提示用户，并return fasle
+            3. 如果参数不为空，则return true，提交表单
+
+    后台：
+        Web层：
+            1. 接收参数 （类型ID、标题、内容）
+            2. 调用Service层方法，返回resultInfo对象
+            3. 判断resultInfo的code值
+                如果code=1，表示成功
+                    重定向跳转到首页 index
+                如果code=0，表示失败
+                    将resultInfo对象设置到request作用域
+                    请求转发跳转到note?actionName=view
+
+        Service层：
+            1. 设置回显对象 Note对象
+            2. 参数的非空判断
+                如果为空，code=0，msg=xxx，result=note对象，返回resultInfo对象
+            2. 调用Dao层，添加云记记录，返回受影响的行数
+            3. 判断受影响的行数
+                如果大于0，code=1
+                如果不大于0，code=0，msg=xxx，result=note对象
+            4. 返回resultInfo对象
+
+        Dao层：
+            添加云记，返回受影响的行数
+
+
+四、分页查询云记列表
+    后台:
+        Web层：
+            1. 接收参数 （当前页、每页显示的数量）
+            2. 获取Session作用域中的user对象
+            3. 调用Service层查询方法，返回Page对象
+            4. 将page对象设置到request作用域中
+            5. 设置首页动态包含的页面值
+            6. 请求转发跳转到index.jsp
+
+        Service层：
+            1. 参数的非空校验
+                如果分页参数为空，则设置默认值
+            2. 查询当前登录用户的云记数量，返回总记录数 （long类型）
+            3. 判断总记录数是否大于0
+            4. 如果总记录数大于0，调用Page类的带参构造，得到其他分页参数的值，返回Page对象
+            5. 查询当前登录用户下当前页的数据列表，返回note集合
+            6. 将note集合设置到page对象中
+            7. 返回Page对象
+
+        Dao层：
+            查询当前登录用户的云记数量，返回总记录数
+            查询当前登录用户下当前页的数据列表，返回note集合
+
+
+五、查询云记详情
+    后台：
+        Web层：
+            1. 接收参数 （noteId）
+            2. 调用Service层的查询方法，返回Note对象
+            3. 将Note对象设置到request请求域中
+            4. 设置首页动态包含的页面值
+            5. 请求转发跳转到index.jsp
+
+        Service层：
+            1. 参数的非空判断
+            2. 调用Dao层的查询，通过noteId查询note对象
+            3. 返回note对象
+
+        Dao层：
+            通过noteId查询note对象
+
+
+六、删除云记
+    前台：
+        "删除"按钮绑定点击事件
+            1. 弹出提示框询问用户是否确认删除
+            2. 如果确认删除，则发送ajax请求
+                如果删除失败，提示用户
+                如果删除成功，跳转到首页
+
+    后台：
+        Web层：
+            1. 接收参数 （noteId）
+            2. 调用Service层删除方法，返回状态码 （1=成功，0=失败）
+            3. 通过流将结果响应给ajax的回调函数 （输出字符串）
+
+        Service层：
+            1. 判断参数
+            2. 调用Dao层的更新方法，返回受影响的行数
+            3. 判断受影响的行数是否大于0
+                如果大于0，返回1；否则返回0
+
+        Dao层：
+            通过noteId删除云记记录，返回受影响的行数
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
